@@ -6,6 +6,12 @@ from vyper.interfaces import ERC721
 
 implements: ERC721
 
+# Part 1: add three public fields to the contract. name & symbol & idToURI
+name: public(String[256]) # string
+symbol: public(String[256]) # string
+idToURI: public(HashMap[uint256, String[256]]) # map id-> string
+
+
 # Interface for the contract called by safeTransferFrom()
 interface ERC721Receiver:
     def onERC721Received(
@@ -50,9 +56,6 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
-name: public(String[32])
-symbol: public(String[32])
-idToURI: public(HashMap[uint256, String[53]])
 
 # @dev Mapping from NFT ID to the address that owns it.
 idToOwner: HashMap[uint256, address]
@@ -87,8 +90,10 @@ def __init__(_name: String[32], _symbol: String[32]):
     self.supportedInterfaces[ERC165_INTERFACE_ID] = True
     self.supportedInterfaces[ERC721_INTERFACE_ID] = True
     self.minter = msg.sender
-    self.name = _name
-    self.symbol = _symbol
+
+    self.name = _name # take a name and set the relevant variables
+    self.symbol = _symbol # take a symbol and set the relevant variables
+
 
 @view
 @external
@@ -327,7 +332,7 @@ def setApprovalForAll(_operator: address, _approved: bool):
 ### MINT & BURN FUNCTIONS ###
 
 @external
-def mint(_to: address, _tokenId: uint256, _URI: String[53]) -> bool:
+def mint(_to: address, _tokenId: uint256, _idToURI: String[256]) -> bool:
     """
     @dev Function to mint tokens
          Throws if `msg.sender` is not the minter.
@@ -343,7 +348,7 @@ def mint(_to: address, _tokenId: uint256, _URI: String[53]) -> bool:
     assert _to != ZERO_ADDRESS
     # Add NFT. Throws if `_tokenId` is owned by someone
     self._addTokenTo(_to, _tokenId)
-    self.idToURI[_tokenId] = _URI
+    self.idToURI[_tokenId] = _idToURI # takes a token URI and sets the appropriate slot in idToURI
     log Transfer(ZERO_ADDRESS, _to, _tokenId)
     return True
 
