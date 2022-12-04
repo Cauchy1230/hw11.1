@@ -1,8 +1,10 @@
 from web3 import Web3
 from vyper import compile_code, compile_codes
 from os import path
-import json
+from web3.providers.rpc import HTTPProvider
+
 import requests
+import json
 
 # For our tests, we'll use a local Ethereum testing environment.
 # If you want to deploy to a live network (e.g. Mainnet or a testnet) simply replace this line with the URL of a real node.
@@ -11,6 +13,9 @@ import requests
 # w3.eth.accounts[1]
 # etc
 w3 = Web3(Web3.EthereumTesterProvider())
+project_id = '2IPL4whdR6Fai5Ljn81anNZbJCc'
+IPFS_API_endpoint = 'https://ipfs.infura.io:5001'
+project_secret = '4bf78a5e1c3598d85bf97f87ea0f4203'
 
 
 def deploy_nft(contract_file, name, symbol, minter_address):
@@ -50,16 +55,6 @@ def deploy_nft(contract_file, name, symbol, minter_address):
 	return ERC721_contract
 
 
-def pin_to_ipfs(data):
-	assert isinstance(data, dict), f"Error pin_to_ipfs expects a dictionary"
-	files = {
-		'file': (json.dumps(data)),
-	}
-	response = requests.post('https://ipfs.infura.io:5001/api/v0/add', files=files)
-	pins = response.json()
-	return pins['Hash']
-
-
 def mint_nft(nft_contract, tokenId, metadata, owner_address, minter_address):
 	"""
 	nft_contract: a deployed contract
@@ -71,10 +66,32 @@ def mint_nft(nft_contract, tokenId, metadata, owner_address, minter_address):
 	assert isinstance(metadata, dict), f"mint_nft expects a metadata dictionary"
 
 	# YOUR CODE HERE
-	cid = pin_to_ipfs(metadata)
-	cid = "ipfs://" + cid
+	# Step 1: pin Metadata to IPFS
+
+	files = {
+
+		'file': json.dumps(metadata)
+	}
+	response = requests.post('https://ipfs.infura.io:5001/api/v0/add', files=files, auth=(project_id, project_secret))
+	# response = response.json()
+	# cid = response["Hash"]
+	# print(response.text)
+	# cid = response.text.split(",")[1].split(":")[1].replace('"','')
+	# cid = response["Hash"]
+	# print(cid)
+	response = response.json()
+
+	print(response)
+
+	cid = response["Hash"]
+	# cid = response2.text.split(",")[1].split(":")[1].replace('"','')
+	print(cid)
 
 	# Step 2:Call "mint" on the contract, set tokenURI to be "ipfs://{CID}" where CID was obtained from step 1
-	result = nft_contract.functions.mint(owner_address, tokenId, cid).transact({"from": minter_address})
+	tokenURI = 'ipfs://' + str(cid)
+	assert isinstance(tokenURI, str), f"get_from_ipfs accepts a cid in the form of a string"
+	nft_contract.functions.mint(owner_address, tokenId, tokenURI).transact({'from': minter_address})
+
+	return True
 
 	
